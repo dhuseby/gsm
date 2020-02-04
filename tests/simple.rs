@@ -1,6 +1,6 @@
-extern crate ccl;
+extern crate gsm;
 
-use ccl::{
+use gsm::{
     Instruction,
     Machine,
     Script,

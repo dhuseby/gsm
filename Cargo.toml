@@ -1,6 +1,6 @@
 [package]
 name = "gsm"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["David Huseby"]
 edition = "2018"
 description = "A very simple generic stack machine crate"

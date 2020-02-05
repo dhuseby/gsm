@@ -5,33 +5,79 @@ use crate::{
 };
 
 pub struct Machine<T> {
-    stack: Stack<T>
+    ip: usize,
+    script: Script<T>,
+    data_stack: Stack<T>,
+    exe_stack: Vec<usize>
 }
 
 impl<T: Instruction<T> + Clone> Machine<T> {
 
     pub fn new() -> Self {
         Machine {
-            stack: Stack::new()
+            ip: 0,
+            script: Script::new(),
+            data_stack: Stack::new(),
+            exe_stack: vec![]
+        }
+    }
+
+    pub fn from(s: &Script<T>) -> Self {
+        Machine {
+            ip: 0,
+            script: s.clone(),
+            data_stack: Stack::new(),
+            exe_stack: vec![s.len()]
         }
     }
 
     pub fn reboot(&mut self) {
-        self.stack.clear()
+        self.data_stack.clear();
+        self.exe_stack.clear();
+        self.ip = 0;
     }
 
-    pub fn execute(&mut self, s: &mut Script<T>) -> Option<Stack<T>> {
+    pub fn load(&mut self, s: &Script<T>) {
+        self.script = s.clone();
+        self.exe_stack.push(s.len());
+    }
+
+    pub fn get_stack_mut(&mut self) -> &mut Stack<T> {
+        &mut self.data_stack
+    }
+
+    pub fn get_ip(&self) -> usize {
+        self.ip
+    }
+
+    pub fn push_frame(&mut self, ret: usize) {
+        self.exe_stack.push(ret);
+    }
+
+    pub fn pop_frame(&mut self) -> Option<usize> {
+        self.exe_stack.pop()
+    }
+
+    pub fn get_instruction(&self, ip: usize) -> Option<T> {
+        self.script.get(ip)
+    }
+
+    pub fn execute(&mut self) -> Option<Stack<T>> {
         loop {
-            if s.is_empty() {
-                return Some(self.stack.clone());
-            }
+            match self.get_instruction(self.get_ip()) {
+                Some(i) => {
+                    self.ip = match i.execute(self) {
+                        Some(new_ip) => new_ip,
 
-            if let Some(instr) = s.pop_front() {
-                if instr.arity() > self.stack.size() {
-                    return None;
+                        // something went wrong in execution so halt and do not
+                        // return the stack
+                        None => return None
+                    }
+                },
+                None => {
+                    // we reached the end of the script, return the stack
+                    return Some(self.data_stack.clone());
                 }
-
-                instr.execute(&mut self.stack);
             }
         }
     }

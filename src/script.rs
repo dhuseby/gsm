@@ -14,20 +14,15 @@ impl<T: Clone> Script<T> {
         Script(self.0.clone())
     }
 
-    pub fn push_back(&mut self, i: T) {
-        self.0.push(i);
-    }
-
-    pub fn pop_front(&mut self) -> Option<T> {
-        if self.0.is_empty() {
-            return None;
+    pub fn get(&self, idx: usize) -> Option<T> {
+        match self.0.get(idx) {
+            Some(i) => Some(i.clone()),
+            None => None
         }
-        
-        Some(self.0.remove(0))
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+    pub fn len(&self) -> usize {
+        self.0.len()
     }
 }
 

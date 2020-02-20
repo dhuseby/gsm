@@ -3,8 +3,7 @@ extern crate gsm;
 use gsm::{
     Instruction,
     Machine,
-    Script,
-    Stack
+    Script
 };
 
 #[derive(Clone, Copy)]
@@ -69,27 +68,6 @@ fn find_matching_elsefi(m: &Machine<Instr>, i: usize) -> Option<IfMatch> {
     }
 }
 
-fn pop_num(m: &mut Machine<Instr>) -> Option<isize> {
-    let stack: &mut Stack<Instr> = m.get_stack_mut();
-    match stack.pop() {
-        Some(Instr::Num(num)) => Some(num),
-        _ => None
-    }
-}
-
-fn pop_bool(m: &mut Machine<Instr>) -> Option<bool> {
-    let stack: &mut Stack<Instr> = m.get_stack_mut();
-    match stack.pop() {
-        Some(Instr::Boolean(b)) => Some(b),
-        _ => None
-    }
-}
-
-fn push_instr(m: &mut Machine<Instr>, i: Instr) {
-    let stack: &mut Stack<Instr> = m.get_stack_mut();
-    stack.push(i);
-}
-
 impl Instruction<Instr> for Instr {
 
     fn name(&self) -> String {
@@ -112,16 +90,13 @@ impl Instruction<Instr> for Instr {
     fn execute(&self, m: &mut Machine<Instr>) -> Option<usize> {
         match self {
             Instr::Add => {
-                let r = match pop_num(m) {
-                    Some(n) => n,
-                    None => return None
-                };
-                let l = match pop_num(m) {
-                    Some(n) => n,
-                    None => return None
-                };
-                push_instr(m, Instr::Num(l + r));
-                return Some(m.get_ip() + 1);
+                if let Instr::Num(r) = m.pop() {
+                    if let Instr::Num(l) = m.pop() {
+                        m.push(Instr::Num(l + r));
+                        return Some(m.get_ip() + 1);
+                    }
+                }
+                panic!();
             },
             Instr::If => {
                 // find the location of the matching 'ELSE' if any and 'FI'
@@ -131,41 +106,40 @@ impl Instruction<Instr> for Instr {
                 };
 
                 // get the Boolean from the stack
-                let b = match pop_bool(m) {
-                    Some(b) => b,
-                    None => return None
-                };
-                if b {
-                    // the boolean is true so continue with the code that is
-                    // between this if and it's matching 'ELSE'
-                    
-                    // first record where we need to go after this block
-                    m.push_frame(ifm.fii + 1);
+                if let Instr::Boolean(b) = m.pop() {
+                    if b {
+                        // the boolean is true so continue with the code that is
+                        // between this if and it's matching 'ELSE'
+                        
+                        // first record where we need to go after this block
+                        m.push_frame(ifm.fii + 1);
 
-                    // then tell the machine the correct next instruction
-                    return Some(m.get_ip() + 1);
-                } else {
-                    // the boolean is false so skip to the instruction after
-                    // the 'ELSE' if there is one, otherwise skip to after the
-                    // 'FI'
-                    let next_ip = match ifm.elsei {
-                        Some(i) => {
-                            // we're executing the 'ELSE' block so we need to
-                            // push a frame with the correct next instruction
-                            m.push_frame(ifm.fii + 1);
+                        // then tell the machine the correct next instruction
+                        return Some(m.get_ip() + 1);
+                    } else {
+                        // the boolean is false so skip to the instruction after
+                        // the 'ELSE' if there is one, otherwise skip to after the
+                        // 'FI'
+                        let next_ip = match ifm.elsei {
+                            Some(i) => {
+                                // we're executing the 'ELSE' block so we need to
+                                // push a frame with the correct next instruction
+                                m.push_frame(ifm.fii + 1);
 
-                            // set the next instruction pointer to the
-                            // instruction after the 'ELSE'
-                            i + 1
-                        },
+                                // set the next instruction pointer to the
+                                // instruction after the 'ELSE'
+                                i + 1
+                            },
 
-                        // No 'ELSE' clause so just skip to the instruction
-                        // after the 'FI'. There is no need to record a frame.
-                        None => ifm.fii + 1
-                    };
+                            // No 'ELSE' clause so just skip to the instruction
+                            // after the 'FI'. There is no need to record a frame.
+                            None => ifm.fii + 1
+                        };
 
-                    return Some(next_ip);
+                        return Some(next_ip);
+                    }
                 }
+                None
             },
             Instr::Else => {
                 // we see an 'ELSE' so this can only be because we previously
@@ -193,7 +167,7 @@ impl Instruction<Instr> for Instr {
             Instr::Num(_) |
             Instr::Boolean(_) => {
                 // push the value onto the stack and keep going
-                push_instr(m, *self);
+                m.push(*self);
                 return Some(m.get_ip() + 1);
             }
         }

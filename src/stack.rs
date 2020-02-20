@@ -17,8 +17,8 @@ impl<T: Clone> Stack<T> {
         self.0.clear();
     }
 
-    pub fn push(&mut self, i: T) {
-        self.0.push(i);
+    pub fn push(&mut self, t: T) {
+        self.0.push(t);
     }
 
     pub fn pop(&mut self) -> Option<T> {

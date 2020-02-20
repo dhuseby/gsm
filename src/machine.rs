@@ -46,6 +46,17 @@ impl<T: Instruction<T> + Clone> Machine<T> {
         &mut self.data_stack
     }
 
+    pub fn push(&mut self, t: T) {
+        self.data_stack.push(t);
+    }
+
+    pub fn pop(&mut self) -> T {
+        match self.data_stack.pop() {
+            Some(t) => t,
+            _ => panic!()
+        }
+    }
+
     pub fn get_ip(&self) -> usize {
         self.ip
     }

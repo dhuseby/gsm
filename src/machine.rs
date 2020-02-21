@@ -61,6 +61,10 @@ impl<T: Instruction<T> + Clone> Machine<T> {
         self.ip
     }
 
+    pub fn next_ip(&self) -> Option<usize> {
+        Some(self.ip + 1)
+    }
+
     pub fn push_frame(&mut self, ret: usize) {
         self.exe_stack.push(ret);
     }

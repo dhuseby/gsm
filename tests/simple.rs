@@ -93,7 +93,7 @@ impl Instruction<Instr> for Instr {
                 if let Instr::Num(r) = m.pop() {
                     if let Instr::Num(l) = m.pop() {
                         m.push(Instr::Num(l + r));
-                        return Some(m.get_ip() + 1);
+                        return m.next_ip();
                     }
                 }
                 panic!();
@@ -115,7 +115,7 @@ impl Instruction<Instr> for Instr {
                         m.push_frame(ifm.fii + 1);
 
                         // then tell the machine the correct next instruction
-                        return Some(m.get_ip() + 1);
+                        return m.next_ip();
                     } else {
                         // the boolean is false so skip to the instruction after
                         // the 'ELSE' if there is one, otherwise skip to after the
@@ -168,7 +168,7 @@ impl Instruction<Instr> for Instr {
             Instr::Boolean(_) => {
                 // push the value onto the stack and keep going
                 m.push(*self);
-                return Some(m.get_ip() + 1);
+                return m.next_ip();
             }
         }
     }
@@ -184,8 +184,6 @@ fn simple_add() {
         Instr::Add
     ]);
     let mut machine = Machine::<Instr>::from(&script);
-   
-    // execute the script
     let mut result = machine.execute().unwrap();
 
     // there should only be one item on the stack
@@ -211,8 +209,6 @@ fn simple_branching_0() {
         Instr::Fi
     ]);
     let mut machine = Machine::<Instr>::from(&script);
-
-    // execute
     let mut result = machine.execute().unwrap();
 
     // there should be a single Num value on the stack
@@ -238,8 +234,6 @@ fn simple_branching_1() {
         Instr::Fi
     ]);
     let mut machine = Machine::<Instr>::from(&script);
-
-    // execute
     let mut result = machine.execute().unwrap();
 
     // there should be a single Num value on the stack
@@ -270,8 +264,6 @@ fn nested_branching_0() {
         Instr::Fi
     ]);
     let mut machine = Machine::<Instr>::from(&script);
-
-    // execute
     let mut result = machine.execute().unwrap();
 
     // there should be a single Num value on the stack
@@ -304,8 +296,6 @@ fn nested_branching_1() {
         Instr::Fi
     ]);
     let mut machine = Machine::<Instr>::from(&script);
-
-    // execute
     let mut result = machine.execute().unwrap();
 
     // there should be a single Num value on the stack
@@ -345,8 +335,6 @@ fn nested_branching_2() {
         Instr::Fi
     ]);
     let mut machine = Machine::<Instr>::from(&script);
-
-    // execute
     let mut result = machine.execute().unwrap();
 
     // there should be a single Num value on the stack
@@ -386,8 +374,6 @@ fn nested_branching_3() {
         Instr::Fi
     ]);
     let mut machine = Machine::<Instr>::from(&script);
-
-    // execute
     let mut result = machine.execute().unwrap();
 
     // there should be a single Num value on the stack

@@ -1,10 +1,10 @@
 extern crate gsm;
-
 use gsm::{
     Instruction,
     Machine,
     Script
 };
+use std::fmt;
 
 #[derive(Clone, Copy)]
 enum Instr {
@@ -69,23 +69,6 @@ fn find_matching_elsefi(m: &Machine<Instr>, i: usize) -> Option<IfMatch> {
 }
 
 impl Instruction<Instr> for Instr {
-
-    fn name(&self) -> String {
-        match self {
-            Instr::Add => String::from("+"),
-            Instr::If => String::from("IF"),
-            Instr::Else => String::from("ELSE"),
-            Instr::Fi => String::from("FI"),
-            Instr::Num(val) => val.to_string(),
-            Instr::Boolean(b) => {
-                if *b {
-                    String::from("TRUE")
-                } else {
-                    String::from("FALSE")
-                }
-            }
-        }
-    }
 
     fn execute(&self, m: &mut Machine<Instr>) -> Option<usize> {
         match self {
@@ -169,6 +152,23 @@ impl Instruction<Instr> for Instr {
                 // push the value onto the stack and keep going
                 m.push(*self);
                 return m.next_ip();
+            }
+        }
+    }
+}
+
+impl fmt::Display for Instr {
+
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Instr::Add => writeln!(f, "+"),
+            Instr::If => writeln!(f, "IF"),
+            Instr::Else => writeln!(f, "ELSE"),
+            Instr::Fi => writeln!(f, "FI"),
+            Instr::Num(val) => writeln!(f, "{}", val),
+            Instr::Boolean(b) => {
+                let val = if *b { "TRUE" } else { "FALSE" };
+                writeln!(f, "{}", val)
             }
         }
     }

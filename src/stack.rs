@@ -1,3 +1,4 @@
+use std::fmt;
 use std::vec::Vec;
 
 #[derive(Clone)]
@@ -27,5 +28,16 @@ impl<T: Clone> Stack<T> {
 
     pub fn size(&self) -> usize {
         self.0.len()
+    }
+}
+
+impl<T: Clone + fmt::Display> fmt::Display for Stack<T> {
+
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut s = self.0.clone();
+        s.reverse();
+        s.iter().fold(Ok(()), |r, i| {
+            r.and_then(|_| writeln!(f, "{}", i))
+        })
     }
 }

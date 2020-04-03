@@ -1,29 +1,28 @@
-use std::fmt;
-use std::vec::Vec;
+use std::{
+    clone::Clone,
+    convert::From,
+    fmt,
+    vec::Vec
+};
 
 #[derive(Clone)]
-pub struct Stack<T>(Vec<T>);
+pub struct Stack<T: Clone>(Vec<T>);
 
 impl<T: Clone> Stack<T> {
-
     pub fn new() -> Self {
         Stack(vec![])
     }
 
-    pub fn clone(&self) -> Self {
-        Stack(self.0.clone())
-    }
-
-    pub fn clear(&mut self) {
-        self.0.clear();
-    }
-
-    pub fn push(&mut self, t: T) {
-        self.0.push(t);
+    pub fn push(&mut self, i: T) {
+        self.0.push(i);
     }
 
     pub fn pop(&mut self) -> Option<T> {
         self.0.pop()
+    }
+
+    pub fn top(&self) -> Option<&T> {
+        self.0.last()
     }
 
     pub fn size(&self) -> usize {
@@ -31,12 +30,15 @@ impl<T: Clone> Stack<T> {
     }
 }
 
-impl<T: Clone + fmt::Display> fmt::Display for Stack<T> {
+impl<I: Clone> From<Vec<I>> for Stack<I> {
+    fn from(s: Vec<I>) -> Self {
+        Stack(s)
+    }
+}
 
+impl<T: Clone + fmt::Display> fmt::Display for Stack<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut s = self.0.clone();
-        s.reverse();
-        s.iter().fold(Ok(()), |r, i| {
+        self.0.iter().rev().fold(Ok(()), |r, i| {
             r.and_then(|_| writeln!(f, "{}", i))
         })
     }

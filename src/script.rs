@@ -1,44 +1,68 @@
-use std::clone::Clone;
-use std::fmt;
-use std::vec::Vec;
+/*
+use serde::{
+    de::Visitor,
+    Deserialize,
+    Deserializer,
+    ser::SerializeSeq,
+    Serialize,
+    Serializer
+};
+*/
 
-#[derive(Clone)]
-pub struct Script<T>(Vec<T>);
+use std::{
+    clone::Clone,
+    convert::From,
+    fmt,
+    //result::Result,
+    vec::Vec
+};
 
-impl<T: Clone> Script<T> {
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Script<I: Clone>(Vec<I>);
 
+impl<I: Clone> Script<I> {
     pub fn new() -> Self {
         Script(vec![])
     }
 
-    pub fn clone(&self) -> Self {
-        Script(self.0.clone())
-    }
-
-    pub fn get(&self, idx: usize) -> Option<T> {
-        match self.0.get(idx) {
-            Some(i) => Some(i.clone()),
-            None => None
+    pub fn get(&self, l: usize) -> Option<I> {
+        if let Some(i) = self.0.get(l) {
+            return Some(i.clone());
         }
-    }
-
-    pub fn len(&self) -> usize {
-        self.0.len()
+        None
     }
 }
 
-impl<T: Clone> From<Vec<T>> for Script<T> {
-
-    fn from(s: Vec<T>) -> Self {
-        Script(s.clone())
+impl<I: Clone> From<Vec<I>> for Script<I> {
+    fn from(s: Vec<I>) -> Self {
+        Script(s)
     }
 }
 
-impl<T: Clone + fmt::Display> fmt::Display for Script<T> {
-
+impl<I: Clone + fmt::Display> fmt::Display for Script<I> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.iter().fold(Ok(()), |r, i| {
             r.and_then(|_| writeln!(f, "{}", i))
         })
     }
 }
+
+/*
+impl<I: Clone + Serialize> Serialize for Script<I> {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error>
+    {
+        let mut seq = s.serialize_seq(Some(self.0.len()))?;
+        for i in self.0 {
+            seq.serialize_element(&i)?;
+        }
+        seq.end()
+    }
+}
+
+impl<'de, I: Clone, V: Visitor<'de>> Deserialize<'de> for Script<I> {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Script<I>, D::Error>
+    {
+        d.deserialize_any(V)
+    }
+}
+*/

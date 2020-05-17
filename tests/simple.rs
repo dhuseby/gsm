@@ -11,11 +11,14 @@ use serde::{
     Serialize,
     Serializer
 };
+use serde_json;
 use std::{
-    fmt
+    fmt,
+    str::FromStr,
+    string::ParseError
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum Instr {
     Add,
     Num(isize),
@@ -266,18 +269,36 @@ impl fmt::Display for Instr {
 
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Instr::Add => writeln!(f, "+"),
-            Instr::If => writeln!(f, "IF"),
-            Instr::Else => writeln!(f, "ELSE"),
-            Instr::Fi => writeln!(f, "FI"),
-            Instr::Num(val) => writeln!(f, "{}", val),
+            Instr::Add => write!(f, "+"),
+            Instr::If => write!(f, "IF"),
+            Instr::Else => write!(f, "ELSE"),
+            Instr::Fi => write!(f, "FI"),
+            Instr::Num(val) => write!(f, "{}", val),
             Instr::Boolean(b) => {
                 let val = if *b { "true" } else { "false" };
-                writeln!(f, "{}", val)
+                write!(f, "{}", val)
             }
         }
     }
 }
+
+impl FromStr for Instr {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let i = match s {
+            "+" => Instr::Add,
+            "IF" => Instr::If,
+            "ELSE" => Instr::Else,
+            "FI" => Instr::Fi,
+            "true" => Instr::Boolean(true),
+            "false" => Instr::Boolean(false),
+            _ => Instr::Num(s.parse::<isize>().unwrap())
+        };
+        Ok(i)
+    }
+}
+
 
 #[test]
 fn simple_add() {
@@ -517,12 +538,14 @@ fn serialization_json() {
         Instr::Fi
     ]);
     let s = serde_json::to_string(&script).unwrap();
-    assert_eq!(s, r#"[false,"IF",1,false,"IF",3,"ELSE",4,"FI","+","ELSE",2,false,"IF",3,"ELSE",4,"FI","+","FI"]"#);
+    assert_eq!(s, r#""false IF 1 false IF 3 ELSE 4 FI + ELSE 2 false IF 3 ELSE 4 FI + FI""#);
+    //assert_eq!(s, r#"[false,"IF",1,false,"IF",3,"ELSE",4,"FI","+","ELSE",2,false,"IF",3,"ELSE",4,"FI","+","FI"]"#);
 }
 
 #[test]
 fn deserialization_json() {
-    let s = r#"[false,"IF",1,false,"IF",3,"ELSE",4,"FI","+","ELSE",2,false,"IF",3,"ELSE",4,"FI","+","FI"]"#;
+    //let s = r#"[false,"IF",1,false,"IF",3,"ELSE",4,"FI","+","ELSE",2,false,"IF",3,"ELSE",4,"FI","+","FI"]"#;
+    let s = r#""false IF 1 false IF 3 ELSE 4 FI + ELSE 2 false IF 3 ELSE 4 FI + FI""#;
     let script: Script<Instr> = serde_json::from_str(s).unwrap();
     let mut machine = Machine::from(script);
     let mut result = machine.execute().unwrap();
@@ -563,23 +586,23 @@ fn serialization_cbor() {
         Instr::Fi
     ]);
     let s = serde_cbor::to_vec(&script).unwrap();
-    let c: Vec<u8> = vec![0x94, 0xf4, 0x62, 0x49, 0x46, 0x01, 0xf4, 0x62, 0x49,
-                          0x46, 0x03, 0x64, 0x45, 0x4c, 0x53, 0x45, 0x04, 0x62,
-                          0x46, 0x49, 0x61, 0x2b, 0x64, 0x45, 0x4c, 0x53, 0x45,
-                          0x02, 0xf4, 0x62, 0x49, 0x46, 0x03, 0x64, 0x45, 0x4c,
-                          0x53, 0x45, 0x04, 0x62, 0x46, 0x49, 0x61, 0x2b, 0x62,
-                          0x46, 0x49];
+    let c: Vec<u8> = vec![120, 66, 102, 97, 108, 115, 101, 32, 73, 70, 32, 49,
+                          32, 102, 97, 108, 115, 101, 32, 73, 70, 32, 51, 32,
+                          69, 76, 83, 69, 32, 52, 32, 70, 73, 32, 43, 32, 69,
+                          76, 83, 69, 32, 50, 32, 102, 97, 108, 115, 101, 32,
+                          73, 70, 32, 51, 32, 69, 76, 83, 69, 32, 52, 32, 70,
+                          73, 32, 43, 32, 70, 73];
     assert_eq!(s, c);
 }
 
 #[test]
 fn deserialization_cbor() {
-    let c: Vec<u8> = vec![0x94, 0xf4, 0x62, 0x49, 0x46, 0x01, 0xf4, 0x62, 0x49,
-                          0x46, 0x03, 0x64, 0x45, 0x4c, 0x53, 0x45, 0x04, 0x62,
-                          0x46, 0x49, 0x61, 0x2b, 0x64, 0x45, 0x4c, 0x53, 0x45,
-                          0x02, 0xf4, 0x62, 0x49, 0x46, 0x03, 0x64, 0x45, 0x4c,
-                          0x53, 0x45, 0x04, 0x62, 0x46, 0x49, 0x61, 0x2b, 0x62,
-                          0x46, 0x49];
+    let c: Vec<u8> = vec![120, 66, 102, 97, 108, 115, 101, 32, 73, 70, 32, 49,
+                          32, 102, 97, 108, 115, 101, 32, 73, 70, 32, 51, 32,
+                          69, 76, 83, 69, 32, 52, 32, 70, 73, 32, 43, 32, 69,
+                          76, 83, 69, 32, 50, 32, 102, 97, 108, 115, 101, 32,
+                          73, 70, 32, 51, 32, 69, 76, 83, 69, 32, 52, 32, 70,
+                          73, 32, 43, 32, 70, 73];
     let script: Script<Instr> = serde_cbor::from_reader(c.as_slice()).unwrap();
     let mut machine = Machine::from(script);
     let mut result = machine.execute().unwrap();

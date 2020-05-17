@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate serde_derive;
-
 pub mod instruction;
 pub use crate::instruction::Instruction;
 

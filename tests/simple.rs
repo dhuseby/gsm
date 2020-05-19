@@ -1,5 +1,6 @@
 extern crate gsm;
 use gsm::{
+    AppIO,
     Instruction,
     Machine,
     Script
@@ -7,15 +8,11 @@ use gsm::{
 use serde::{
     de,
     Deserialize,
-    Deserializer,
-    Serialize,
-    Serializer
+    Deserializer
 };
-use serde_json;
 use std::{
     fmt,
-    str::FromStr,
-    string::ParseError
+    io
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -28,20 +25,6 @@ enum Instr {
     Fi
 }
 
-impl Serialize for Instr {
-    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error>
-    {
-        match *self {
-            Instr::Add => s.serialize_str("+"),
-            Instr::Num(i) => s.serialize_i64(i as i64),
-            Instr::Boolean(b) => s.serialize_bool(b),
-            Instr::If => s.serialize_str("IF"),
-            Instr::Else => s.serialize_str("ELSE"),
-            Instr::Fi => s.serialize_str("FI")
-        }
-    }
-}
-
 struct InstrVisitor;
 
 impl<'de> de::Visitor<'de> for InstrVisitor {
@@ -52,76 +35,43 @@ impl<'de> de::Visitor<'de> for InstrVisitor {
     }
 
     fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-        println!("visit_str({})", v);
         match v {
             "+" => Ok(Instr::Add),
             "IF" => Ok(Instr::If),
             "ELSE" => Ok(Instr::Else),
             "FI" => Ok(Instr::Fi),
-            &_ => Err(E::custom(format!("unknown token: {}", v)))
+            &_ => {
+                if let Ok(b) = v.parse::<bool>() {
+                    return Ok(Instr::Boolean(b));
+                } else if let Ok(i) = v.parse::<isize>() {
+                    return Ok(Instr::Num(i));
+                } else {
+                    return Err(E::custom(format!("failed to parse '{}'", v)));
+                }
+            }
         }
-    }
-
-    fn visit_bool<E: de::Error>(self, v: bool) -> Result<Self::Value, E> {
-        println!("visit_bool({})", v);
-        Ok(Instr::Boolean(v))
-    }
-
-    fn visit_i8<E: de::Error>(self, v: i8) -> Result<Self::Value, E> {
-        println!("visit_i8({})", v);
-        Ok(Instr::Num(v as isize))
-    }
-
-    fn visit_i16<E: de::Error>(self, v: i16) -> Result<Self::Value, E> {
-        println!("visit_i16({})", v);
-        Ok(Instr::Num(v as isize))
-    }
-
-    fn visit_i32<E: de::Error>(self, v: i32) -> Result<Self::Value, E> {
-        println!("visit_i32({})", v);
-        Ok(Instr::Num(v as isize))
-    }
-
-    fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
-        println!("visit_i64({})", v);
-        Ok(Instr::Num(v as isize))
-    }
-
-    fn visit_i128<E: de::Error>(self, v: i128) -> Result<Self::Value, E> {
-        println!("visit_i128({})", v);
-        Ok(Instr::Num(v as isize))
-    }
-
-    fn visit_u8<E: de::Error>(self, v: u8) -> Result<Self::Value, E> {
-        println!("visit_u8({})", v);
-        Ok(Instr::Num(v as isize))
-    }
-
-    fn visit_u16<E: de::Error>(self, v: u16) -> Result<Self::Value, E> {
-        println!("visit_u16({})", v);
-        Ok(Instr::Num(v as isize))
-    }
-
-    fn visit_u32<E: de::Error>(self, v: u32) -> Result<Self::Value, E> {
-        println!("visit_u32({})", v);
-        Ok(Instr::Num(v as isize))
-    }
-
-    fn visit_u64<E: de::Error>(self, v: u64) -> Result<Self::Value, E> {
-        println!("visit_u64({})", v);
-        Ok(Instr::Num(v as isize))
-    }
-
-    fn visit_u128<E: de::Error>(self, v: u128) -> Result<Self::Value, E> {
-        println!("visit_u128({})", v);
-        Ok(Instr::Num(v as isize))
     }
 }
 
 impl<'de> Deserialize<'de> for Instr {
-    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Instr, D::Error>
-    {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Instr, D::Error> {
         d.deserialize_any(InstrVisitor)
+    }
+}
+
+impl fmt::Display for Instr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Instr::Add => write!(f, "+"),
+            Instr::If => write!(f, "IF"),
+            Instr::Else => write!(f, "ELSE"),
+            Instr::Fi => write!(f, "FI"),
+            Instr::Num(val) => write!(f, "{}", val),
+            Instr::Boolean(b) => {
+                let val = if *b { "true" } else { "false" };
+                write!(f, "{}", val)
+            }
+        }
     }
 }
 
@@ -177,9 +127,19 @@ fn find_matching_elsefi(m: &Machine<Instr>, i: usize) -> Option<IfMatch> {
     }
 }
 
+struct NullIO;
+
+impl AppIO<Instr> for NullIO {
+    fn open(&self, _m: &mut Machine<Instr>) -> io::Result<()> { Ok(()) }
+    fn read(&self, _m: &mut Machine<Instr>) -> io::Result<()> { Ok(()) }
+    fn write(&self, _m: &mut Machine<Instr>) -> io::Result<()> { Ok(()) }
+    fn seek(&self, _m: &mut Machine<Instr>) -> io::Result<()> { Ok(()) }
+    fn close(&self, _m: &mut Machine<Instr>) -> io::Result<()> { Ok(()) }
+}
+
 impl Instruction<Instr> for Instr {
 
-    fn execute(&self, ip: usize, m: &mut Machine<Instr>) {
+    fn execute(&self, ip: usize, m: &mut Machine<Instr>, _io: &dyn AppIO<Instr>) {
         match self {
             Instr::Add => {
                 if let Some(Instr::Num(r)) = m.pop() {
@@ -265,40 +225,6 @@ impl Instruction<Instr> for Instr {
     }
 }
 
-impl fmt::Display for Instr {
-
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Instr::Add => write!(f, "+"),
-            Instr::If => write!(f, "IF"),
-            Instr::Else => write!(f, "ELSE"),
-            Instr::Fi => write!(f, "FI"),
-            Instr::Num(val) => write!(f, "{}", val),
-            Instr::Boolean(b) => {
-                let val = if *b { "true" } else { "false" };
-                write!(f, "{}", val)
-            }
-        }
-    }
-}
-
-impl FromStr for Instr {
-    type Err = ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let i = match s {
-            "+" => Instr::Add,
-            "IF" => Instr::If,
-            "ELSE" => Instr::Else,
-            "FI" => Instr::Fi,
-            "true" => Instr::Boolean(true),
-            "false" => Instr::Boolean(false),
-            _ => Instr::Num(s.parse::<isize>().unwrap())
-        };
-        Ok(i)
-    }
-}
-
 
 #[test]
 fn simple_add() {
@@ -310,7 +236,8 @@ fn simple_add() {
         Instr::Add
     ]);
     let mut machine = Machine::from(script);
-    let mut result = machine.execute().unwrap();
+    let appio = NullIO;
+    let mut result = machine.execute(&appio).unwrap();
 
     // there should only be one item on the stack
     assert_eq!(result.size(), 1 as usize);
@@ -335,7 +262,8 @@ fn simple_branching_0() {
         Instr::Fi
     ]);
     let mut machine = Machine::from(script);
-    let mut result = machine.execute().unwrap();
+    let appio = NullIO;
+    let mut result = machine.execute(&appio).unwrap();
 
     // there should be a single Num value on the stack
     assert_eq!(result.size(), 1 as usize);
@@ -360,7 +288,8 @@ fn simple_branching_1() {
         Instr::Fi
     ]);
     let mut machine = Machine::from(script);
-    let mut result = machine.execute().unwrap();
+    let appio = NullIO;
+    let mut result = machine.execute(&appio).unwrap();
 
     // there should be a single Num value on the stack
     assert_eq!(result.size(), 1 as usize);
@@ -390,7 +319,8 @@ fn nested_branching_0() {
         Instr::Fi
     ]);
     let mut machine = Machine::from(script);
-    let mut result = machine.execute().unwrap();
+    let appio = NullIO;
+    let mut result = machine.execute(&appio).unwrap();
 
     // there should be a single Num value on the stack
     assert_eq!(result.size(), 1 as usize);
@@ -422,7 +352,8 @@ fn nested_branching_1() {
         Instr::Fi
     ]);
     let mut machine = Machine::from(script);
-    let mut result = machine.execute().unwrap();
+    let appio = NullIO;
+    let mut result = machine.execute(&appio).unwrap();
 
     // there should be a single Num value on the stack
     assert_eq!(result.size(), 1 as usize);
@@ -461,7 +392,8 @@ fn nested_branching_2() {
         Instr::Fi
     ]);
     let mut machine = Machine::from(script);
-    let mut result = machine.execute().unwrap();
+    let appio = NullIO;
+    let mut result = machine.execute(&appio).unwrap();
 
     // there should be a single Num value on the stack
     assert_eq!(result.size(), 1 as usize);
@@ -500,7 +432,8 @@ fn nested_branching_3() {
         Instr::Fi
     ]);
     let mut machine = Machine::from(script);
-    let mut result = machine.execute().unwrap();
+    let appio = NullIO;
+    let mut result = machine.execute(&appio).unwrap();
 
     // there should be a single Num value on the stack
     assert_eq!(result.size(), 1 as usize);
@@ -539,16 +472,15 @@ fn serialization_json() {
     ]);
     let s = serde_json::to_string(&script).unwrap();
     assert_eq!(s, r#""false IF 1 false IF 3 ELSE 4 FI + ELSE 2 false IF 3 ELSE 4 FI + FI""#);
-    //assert_eq!(s, r#"[false,"IF",1,false,"IF",3,"ELSE",4,"FI","+","ELSE",2,false,"IF",3,"ELSE",4,"FI","+","FI"]"#);
 }
 
 #[test]
 fn deserialization_json() {
-    //let s = r#"[false,"IF",1,false,"IF",3,"ELSE",4,"FI","+","ELSE",2,false,"IF",3,"ELSE",4,"FI","+","FI"]"#;
     let s = r#""false IF 1 false IF 3 ELSE 4 FI + ELSE 2 false IF 3 ELSE 4 FI + FI""#;
     let script: Script<Instr> = serde_json::from_str(s).unwrap();
     let mut machine = Machine::from(script);
-    let mut result = machine.execute().unwrap();
+    let appio = NullIO;
+    let mut result = machine.execute(&appio).unwrap();
 
     // there should be a single Num value on the stack
     assert_eq!(result.size(), 1 as usize);
@@ -558,6 +490,13 @@ fn deserialization_json() {
         Some(Instr::Num(num)) => assert_eq!(num, 6),
         _ => panic!()
     }
+}
+
+#[test]
+#[should_panic]
+fn deserialization_parse_failure() {
+    let s = r#""false IF 1 foo IF 3 ELSE 4 FI + ELSE 2 false IF 3 ELSE 4 FI + FI""#;
+    serde_json::from_str::<Script<Instr>>(s).unwrap();
 }
 
 #[test]
@@ -605,7 +544,8 @@ fn deserialization_cbor() {
                           73, 32, 43, 32, 70, 73];
     let script: Script<Instr> = serde_cbor::from_reader(c.as_slice()).unwrap();
     let mut machine = Machine::from(script);
-    let mut result = machine.execute().unwrap();
+    let appio = NullIO;
+    let mut result = machine.execute(&appio).unwrap();
 
     // there should be a single Num value on the stack
     assert_eq!(result.size(), 1 as usize);

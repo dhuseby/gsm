@@ -9,3 +9,12 @@ pub use crate::script::Script;
 
 pub mod stack;
 pub use crate::stack::Stack;
+
+pub mod appio;
+pub use crate::appio::{
+	AppIO,
+	Mode,
+	ModeVisitor,
+	Whence,
+	WhenceVisitor
+};

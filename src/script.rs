@@ -1,5 +1,8 @@
 use serde::{
-    de,
+    de::{
+        self,
+        IntoDeserializer
+    },
     Deserialize,
     Deserializer,
     Serialize,
@@ -10,8 +13,6 @@ use std::{
     convert::From,
     fmt,
     marker::PhantomData,
-    str::FromStr,
-    string::ParseError,
     vec::Vec
 };
 
@@ -49,22 +50,7 @@ impl<I: Clone + fmt::Display> fmt::Display for Script<I> {
     }
 }
 
-impl<I: Clone + FromStr + fmt::Debug> FromStr for Script<I> {
-    type Err = ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut v: Vec<I> = Vec::new();
-        for t in s.split_whitespace() {
-            if let Ok(i) = I::from_str(t) {
-                v.push(i);
-                continue;
-            } 
-        }
-        Ok(Script(v))
-    }
-}
-
-impl<I: Clone + Serialize + fmt::Display> Serialize for Script<I> {
+impl<I: Clone + fmt::Display> Serialize for Script<I> {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error>
     {
         s.serialize_str(format!("{}", self).as_str())
@@ -73,23 +59,25 @@ impl<I: Clone + Serialize + fmt::Display> Serialize for Script<I> {
 
 struct ScriptVisitor<I>(PhantomData<fn() -> I>);
 
-impl<'de, I: Clone + FromStr + fmt::Debug> de::Visitor<'de> for ScriptVisitor<I> {
+impl<'de, I: Clone + Deserialize<'de> + fmt::Debug> de::Visitor<'de> for ScriptVisitor<I> {
     type Value = Script<I>;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Script string")
     }
 
-    fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-        println!("script_str({})", v);
-        match Script::<I>::from_str(v) {
-            Ok(s) => Ok(s),
-            Err(_) => Err(de::Error::custom("failed to parse script"))
+    fn visit_str<E: de::Error>(self, s: &str) -> Result<Self::Value, E> {
+
+        let mut v: Vec<I> = Vec::new();
+        for t in s.split_whitespace() {
+            let i: I = Deserialize::deserialize(t.into_deserializer())?;
+            v.push(i);
         }
+        Ok(Script::from(v))
     }
 }
 
-impl<'de, I: Clone + FromStr + fmt::Debug> Deserialize<'de> for Script<I> {
+impl<'de, I: Clone + Deserialize<'de> + fmt::Debug> Deserialize<'de> for Script<I> {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Script<I>, D::Error>
     {
         d.deserialize_str(ScriptVisitor(PhantomData))

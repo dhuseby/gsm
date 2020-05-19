@@ -1,4 +1,5 @@
 use crate::{
+    AppIO,
     Instruction,
     Script,
     Stack
@@ -9,7 +10,7 @@ pub struct Machine<I: Clone>
 {
     d: Stack<I>,
     r: Stack<usize>,
-    s: Script<I>,
+    s: Script<I>
 }
 
 impl<I: Clone + Instruction<I>> Machine<I>
@@ -40,12 +41,12 @@ impl<I: Clone + Instruction<I>> Machine<I>
         self.pushr(0);
     }
 
-    pub fn execute(&mut self) -> Option<Stack<I>> 
+    pub fn execute(&mut self, io: &dyn AppIO<I>) -> Option<Stack<I>> 
     {
         loop {
             if let Some(ip) = self.popr() {
                 if let Some(instr) = self.geti(ip) {
-                    instr.execute(ip, self);
+                    instr.execute(ip, self, io);
                 } else {
                     // end of script
                     return Some(self.d.clone());

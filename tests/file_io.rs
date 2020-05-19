@@ -19,6 +19,7 @@ use serde::{
 use std::{
     fmt,
     fs::{
+        self,
         File,
         OpenOptions
     },
@@ -124,11 +125,14 @@ impl AppIO<Instr> for FileIO {
         if let Some(Instr::Mode(mode)) = m.pop() {
             if let Some(Instr::Text(p)) = m.pop() {
                 let path = PathBuf::from(p);
+                let create = mode.write || mode.append;
+                let truncate = mode.write;
                 let oo  = OpenOptions::new()
-                                      .read(mode.read)
-                                      .write(mode.write)
+                                      .read(mode.read || mode.plus)
+                                      .write(mode.write || mode.plus)
                                       .append(mode.append)
-                                      .create(!(mode.read || (mode.append && mode.plus)))
+                                      .create(create)
+                                      .truncate(truncate)
                                       .open(path.as_path());
 
                 let f = match oo {
@@ -169,6 +173,9 @@ impl AppIO<Instr> for FileIO {
         match m.pop() {
             Some(Instr::Binary(b)) => {
                 if let Some(Instr::IOHandle{ mut f, binary }) = m.pop() {
+                    if !binary {
+                        return Err(io::Error::new(io::ErrorKind::Other, "writing binary to a text file"));
+                    }
                     let fh = Rc::get_mut(&mut f).unwrap();
                     fh.write(b.as_ref())?;
                     m.push(Instr::IOHandle{ f, binary });
@@ -177,6 +184,9 @@ impl AppIO<Instr> for FileIO {
             },
             Some(Instr::Text(s)) => {
                 if let Some(Instr::IOHandle{ mut f, binary }) = m.pop() {
+                    if binary {
+                        return Err(io::Error::new(io::ErrorKind::Other, "writing text to a binary file"));
+                    }
                     let fh = Rc::get_mut(&mut f).unwrap();
                     fh.write(s.as_ref())?;
                     m.push(Instr::IOHandle{ f, binary });
@@ -350,15 +360,45 @@ fn read_binary_file() {
 }
 
 #[test]
-fn write_file() {
-    let mut b = BytesMut::new();
-    let data = hex::decode("0adb80d2fc4d74adb99059a596ba21706dada1e29fd855a664ce815f88e6b169".to_string()).unwrap();
-    b.put_slice(&data);
+fn write_text_file() {
+    let fname = "test.txt";
+    let data = "When in the Course of human events...".to_string();
+    let len = data.len() as u64;
 
     // construct the script and load it into the machine
     let script = Script::from(vec![
-        Instr::Text("foo.txt".to_string()),
+        Instr::Text(fname.to_string()),
         Instr::Mode(gsm::Mode::from_str("w").unwrap()),
+        Instr::Open,
+        Instr::Text(data),
+        Instr::Write,
+        Instr::Close
+    ]);
+    let mut machine = Machine::from(script);
+    let result = machine.execute(&FileIO).unwrap();
+
+    // there should only be one item on the stack
+    assert_eq!(result.size(), 0 as usize);
+
+    let meta = fs::metadata(fname).unwrap();
+    assert!(meta.is_file());
+    assert_eq!(meta.len(), len);
+    fs::remove_file(fname).unwrap();
+}
+
+#[test]
+fn write_binary_file() {
+    let fname = "test.bin";
+    let mut b = BytesMut::new();
+    let data = hex::decode("0adb80d2fc4d74adb99059a596ba21706dada1e29fd855a664ce815f88e6b169").unwrap();
+    let len = data.len() as u64;
+    b.put(data.as_ref());
+
+
+    // construct the script and load it into the machine
+    let script = Script::from(vec![
+        Instr::Text(fname.to_string()),
+        Instr::Mode(gsm::Mode::from_str("wb").unwrap()),
         Instr::Open,
         Instr::Binary(b.freeze()),
         Instr::Write,
@@ -369,5 +409,9 @@ fn write_file() {
 
     // there should only be one item on the stack
     assert_eq!(result.size(), 0 as usize);
-}
 
+    let meta = fs::metadata(fname).unwrap();
+    assert!(meta.is_file());
+    assert_eq!(meta.len(), len);
+    fs::remove_file(fname).unwrap();
+}

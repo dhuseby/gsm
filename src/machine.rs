@@ -41,7 +41,7 @@ impl<I: Clone + Instruction<I>> Machine<I>
         self.pushr(0);
     }
 
-    pub fn execute(&mut self, io: &dyn AppIO<I>) -> Option<Stack<I>> 
+    pub fn execute(&mut self, io: &dyn AppIO<I>) -> Option<Stack<I>>
     {
         loop {
             if let Some(ip) = self.popr() {

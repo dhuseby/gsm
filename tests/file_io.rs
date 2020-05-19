@@ -415,3 +415,21 @@ fn write_binary_file() {
     assert_eq!(meta.len(), len);
     fs::remove_file(fname).unwrap();
 }
+
+#[test]
+fn deserialization_json() {
+    let s = r#""script.txt w OPEN blah WRITE CLOSE""#;
+    let script: Script<Instr> = serde_json::from_str(s).unwrap();
+    let mut machine = Machine::from(script);
+    let result = machine.execute(&FileIO).unwrap();
+
+    // the stack should be empty
+    assert_eq!(result.size(), 0 as usize);
+
+    let meta = fs::metadata("script.txt").unwrap();
+    assert!(meta.is_file());
+    assert_eq!(meta.len(), 4);
+    fs::remove_file("script.txt").unwrap();
+}
+
+

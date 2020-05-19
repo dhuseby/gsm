@@ -94,7 +94,7 @@ impl FromStr for Mode {
 }
 
 impl Default for Mode {
-    fn default() -> Self { 
+    fn default() -> Self {
         Mode {
             s: String::default(),
             read: false,

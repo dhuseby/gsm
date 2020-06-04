@@ -16,7 +16,7 @@ use std::{
     vec::Vec
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Script<I: Clone>(Vec<I>);
 
 impl<I: Clone> Script<I> {

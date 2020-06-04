@@ -7,6 +7,7 @@ use gsm::{
 };
 use serde::{
     de,
+    Serialize,
     Deserialize,
     Deserializer
 };
@@ -15,7 +16,7 @@ use std::{
     io
 };
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum Instr {
     Add,
     Num(isize),
@@ -490,6 +491,75 @@ fn deserialization_json() {
         Some(Instr::Num(num)) => assert_eq!(num, 6),
         _ => panic!()
     }
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+struct SerTest {
+    test: bool,
+    script: Script<Instr>
+}
+
+#[test]
+fn deserialization_json_2() {
+    let o = SerTest { 
+        test: true,
+        script: Script::from(vec![
+            Instr::Boolean(false),
+            Instr::If,
+                Instr::Num(1),
+                Instr::Boolean(false),
+                Instr::If,
+                    Instr::Num(3),
+                Instr::Else,
+                    Instr::Num(4),
+                Instr::Fi,
+                Instr::Add,
+            Instr::Else,
+                Instr::Num(2),
+                Instr::Boolean(false),
+                Instr::If,
+                    Instr::Num(3),
+                Instr::Else,
+                    Instr::Num(4),
+                Instr::Fi,
+                Instr::Add,
+            Instr::Fi
+        ])
+    };
+    let s = serde_json::to_string(&o).unwrap();
+    assert_eq!(s, r#"{"test":true,"script":"false IF 1 false IF 3 ELSE 4 FI + ELSE 2 false IF 3 ELSE 4 FI + FI"}"#);
+}
+
+#[test]
+fn deserialization_json_3() {
+    let s = r#"{"test":true,"script":"false IF 1 false IF 3 ELSE 4 FI + ELSE 2 false IF 3 ELSE 4 FI + FI"}"#;
+    let sertest: SerTest = serde_json::from_str(s).unwrap();
+    let o = SerTest { 
+        test: true,
+        script: Script::from(vec![
+            Instr::Boolean(false),
+            Instr::If,
+                Instr::Num(1),
+                Instr::Boolean(false),
+                Instr::If,
+                    Instr::Num(3),
+                Instr::Else,
+                    Instr::Num(4),
+                Instr::Fi,
+                Instr::Add,
+            Instr::Else,
+                Instr::Num(2),
+                Instr::Boolean(false),
+                Instr::If,
+                    Instr::Num(3),
+                Instr::Else,
+                    Instr::Num(4),
+                Instr::Fi,
+                Instr::Add,
+            Instr::Fi
+        ])
+    };
+    assert_eq!(sertest, o);
 }
 
 #[test]

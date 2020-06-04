@@ -14,7 +14,7 @@ use std::{
     str::FromStr,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Whence {
     Start,
     Cur,
@@ -56,7 +56,7 @@ impl Display for Whence {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Mode {
     s: String,
     pub read: bool,

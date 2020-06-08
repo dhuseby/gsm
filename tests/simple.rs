@@ -237,8 +237,7 @@ fn simple_add() {
         Instr::Add
     ]);
     let mut machine = Machine::from(script);
-    let appio = NullIO;
-    let mut result = machine.execute(&appio).unwrap();
+    let mut result = machine.execute(&NullIO).unwrap();
 
     // there should only be one item on the stack
     assert_eq!(result.size(), 1 as usize);
@@ -263,8 +262,7 @@ fn simple_branching_0() {
         Instr::Fi
     ]);
     let mut machine = Machine::from(script);
-    let appio = NullIO;
-    let mut result = machine.execute(&appio).unwrap();
+    let mut result = machine.execute(&NullIO).unwrap();
 
     // there should be a single Num value on the stack
     assert_eq!(result.size(), 1 as usize);
@@ -289,8 +287,7 @@ fn simple_branching_1() {
         Instr::Fi
     ]);
     let mut machine = Machine::from(script);
-    let appio = NullIO;
-    let mut result = machine.execute(&appio).unwrap();
+    let mut result = machine.execute(&NullIO).unwrap();
 
     // there should be a single Num value on the stack
     assert_eq!(result.size(), 1 as usize);
@@ -320,8 +317,7 @@ fn nested_branching_0() {
         Instr::Fi
     ]);
     let mut machine = Machine::from(script);
-    let appio = NullIO;
-    let mut result = machine.execute(&appio).unwrap();
+    let mut result = machine.execute(&NullIO).unwrap();
 
     // there should be a single Num value on the stack
     assert_eq!(result.size(), 1 as usize);
@@ -353,8 +349,7 @@ fn nested_branching_1() {
         Instr::Fi
     ]);
     let mut machine = Machine::from(script);
-    let appio = NullIO;
-    let mut result = machine.execute(&appio).unwrap();
+    let mut result = machine.execute(&NullIO).unwrap();
 
     // there should be a single Num value on the stack
     assert_eq!(result.size(), 1 as usize);
@@ -393,8 +388,7 @@ fn nested_branching_2() {
         Instr::Fi
     ]);
     let mut machine = Machine::from(script);
-    let appio = NullIO;
-    let mut result = machine.execute(&appio).unwrap();
+    let mut result = machine.execute(&NullIO).unwrap();
 
     // there should be a single Num value on the stack
     assert_eq!(result.size(), 1 as usize);
@@ -433,8 +427,7 @@ fn nested_branching_3() {
         Instr::Fi
     ]);
     let mut machine = Machine::from(script);
-    let appio = NullIO;
-    let mut result = machine.execute(&appio).unwrap();
+    let mut result = machine.execute(&NullIO).unwrap();
 
     // there should be a single Num value on the stack
     assert_eq!(result.size(), 1 as usize);
@@ -480,8 +473,7 @@ fn deserialization_json() {
     let s = r#""false IF 1 false IF 3 ELSE 4 FI + ELSE 2 false IF 3 ELSE 4 FI + FI""#;
     let script: Script<Instr> = serde_json::from_str(s).unwrap();
     let mut machine = Machine::from(script);
-    let appio = NullIO;
-    let mut result = machine.execute(&appio).unwrap();
+    let mut result = machine.execute(&NullIO).unwrap();
 
     // there should be a single Num value on the stack
     assert_eq!(result.size(), 1 as usize);
@@ -614,8 +606,7 @@ fn deserialization_cbor() {
                           73, 32, 43, 32, 70, 73];
     let script: Script<Instr> = serde_cbor::from_reader(c.as_slice()).unwrap();
     let mut machine = Machine::from(script);
-    let appio = NullIO;
-    let mut result = machine.execute(&appio).unwrap();
+    let mut result = machine.execute(&NullIO).unwrap();
 
     // there should be a single Num value on the stack
     assert_eq!(result.size(), 1 as usize);

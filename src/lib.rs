@@ -2,7 +2,10 @@ pub mod instruction;
 pub use crate::instruction::Instruction;
 
 pub mod machine;
-pub use crate::machine::Machine;
+pub use crate::machine::{
+	Machine,
+	MachineBuilder
+};
 
 pub mod script;
 pub use crate::script::Script;
